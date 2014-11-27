@@ -1,0 +1,29 @@
+{
+  "name": "loopback-connector-couch",
+  "version": "0.1.0",
+  "description": "CouchDB adapter for Loopback.io",
+  "main": "index.js",
+  "contributors": [
+    {
+      "name": "Matteo Angeloni",
+      "email": "mattange@gmail.com"
+    }
+  ],
+  "scripts": {
+    "test": "./node_modules/.bin/mocha -G test/*.js"
+  },
+  "dependencies": {
+    "lodash": "^2.4.1",
+    "nano": "^6.0.2"
+  },
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-coffee": "^0.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jugglingdb/nano-adapter.git"
+  },
+  "author": "Matteo Angeloni <mattange@gmail.com>",
+  "license": "MIT"
+}
