@@ -65,12 +65,12 @@ During querying of database for standard Loopback.io API endpoints this adapter 
 - All queries to the database use `include_docs` set to `true`
 - Loopback's `offset` is used as `skip` query parameter 
 - Loopback's `limit` is used as `limit` query parameter
-- Both `offset` and `limit` are ignored in the request if a specific `id` is requested via `where` (e.g. {"where": {"id":"someID"}}). If `where` is included (e.g. {"where":{"foo":"bar"}}), then the results are retrieved in their entirety, then filtered via `where` and then `offset` and `limit`, so that for example all items that satisfy the `where` criteria can be retrieved in various paginated requests.
+- Both `offset` and `limit` are ignored in the request if a specific `id` is requested via `where` (e.g. `{"where": {"id":"someID"}}`). If `where` is included (e.g. `{"where":{"foo":"bar"}}`), then the results are retrieved in their entirety, then filtered via `where` and then `offset` and `limit`, so that for example all items that satisfy the `where` criteria can be retrieved in various paginated requests.
 
 ## Known caveats
 
 - `queryView` API endpoint (only generated if the options specify additional views to be made available in the CouchDB database) will return the output of the view (with specific keys as requested), that may or may not be linked to the Model being used for the query, if the same CouchDB database is used for multiple document types: fundamentally, no checks are done on the output of the view (other than any _id into id and removing loopbackModel property in case present).
-- `updateAttributes` API endpoint will work, but will not return the updated _rev (working to solve that issue). Consider updating the entire document, as that will allow to update the _rev in the response.  
+- `PUT /modelName/{id} | updateAttributes` API endpoint will work as expected, but will not return the updated `_rev` (working to solve that issue). Consider updating the entire document via `PUT /modelName`, as that will allow to update the `_rev` in the response.
 
 ## MIT License
 
