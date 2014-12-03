@@ -16,35 +16,35 @@ To use it you need to load the loopback-connector-juggler first if used programm
 Otherwise, set things up in your datasources.json (see Loopback.io documentation for details):
 
 ```   	
-		"YOURDATASOURCENAME": {
-			"name": "YOURDATASOURCENAME",	//Loopback.io - mandatory
-			"connector": "couch",			//Loopback.io - mandatory
-			"db": "DBNAME",					//"db" or "database" - required
-			"host": "127.0.0.1",			//this is also the default if not included
-			"port": 5984,					//this is also the default if not included
-			"protocol": "http",				//this is also the default if not included
-			"auth": {						//optional, including each of its members
-					"admin": {
-						"username": "YOURUSERNAME_ADMIN",
-						"password": "YOURPASSWORD_ADMIN"
-					},
-					"reader": {
-						"username": "YOURUSERNAME_READER",
-						"password": "YOURPASSWORD_READER"
-					},
-					"writer": {
-						"username": "YOURUSERNAME_WRITER",
-						"password": "YOURPASSWORD_WRITER"
-					}
+"YOURDATASOURCENAME": {
+	"name": "YOURDATASOURCENAME",	//Loopback.io - mandatory
+	"connector": "couch",			//Loopback.io - mandatory
+	"db": "DBNAME",					//"db" or "database" - required
+	"host": "127.0.0.1",			//this is also the default if not included
+	"port": 5984,					//this is also the default if not included
+	"protocol": "http",				//this is also the default if not included
+	"auth": {						//optional, including each of its members
+			"admin": {
+				"username": "YOURUSERNAME_ADMIN",
+				"password": "YOURPASSWORD_ADMIN"
 			},
-			"views": [						//optional
-				{
-					"ddoc": "existing_design_document",
-					"name": "existing_design_document_view"
-				},
-				...
-			]
-		}
+			"reader": {
+				"username": "YOURUSERNAME_READER",
+				"password": "YOURPASSWORD_READER"
+			},
+			"writer": {
+				"username": "YOURUSERNAME_WRITER",
+				"password": "YOURPASSWORD_WRITER"
+			}
+	},
+	"views": [						//optional
+		{
+			"ddoc": "existing_design_document",
+			"name": "existing_design_document_view"
+		},
+		...
+	]
+}
 ```
     
 ### Automatic creation of views for indexes
