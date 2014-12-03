@@ -2,6 +2,7 @@
   "name": "loopback-connector-couch",
   "version": "0.1.0",
   "description": "CouchDB adapter for Loopback.io",
+  "keywords": ["strongloop", "loopback","connector","couch","CouchDB","loopback-connector"],
   "main": "index.js",
   "contributors": [
     {
