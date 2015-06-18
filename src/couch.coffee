@@ -9,17 +9,17 @@ exports.initialize = (dataSource, callback) ->
 #Constructor and useful reference functions
 class CouchConnector
 	constructor: (dataSource) ->
-		
+
 		@dataSource = dataSource
 		dataSource.connector = this
-		
+
 		settings = dataSource.settings or {}
 		@settings = settings
 		helpers.optimizeSettings settings
-		
+
 		design = views: by_model: map:
 			'function (doc) { if (doc.loopbackModel) return emit(doc.loopbackModel, null); }'
-		
+
 		if settings.auth?.reader
 			@_nanoReader = require('nano')(@buildAuthUrl(settings.auth.reader))
 		if settings.auth?.writer
@@ -30,7 +30,7 @@ class CouchConnector
 		@_nanoReader = require('nano')(@buildAuthUrl(settings.auth)) if not @_nanoReader
 		@_nanoWriter = require('nano')(@buildAuthUrl(settings.auth)) if not @_nanoWriter
 		@_nanoAdmin = require('nano')(@buildAuthUrl(settings.auth)) if not @_nanoAdmin
-		
+
 		helpers.updateDesign @_nanoAdmin, '_design/loopback', design
 		@_models = {}
 		@name = 'couchdb'
@@ -48,12 +48,12 @@ class CouchConnector
 			dataSource.queryView = viewFn
 
 		return this
-	
+
 	relational: false
-	
-	getDefaultIdType: () -> 
+
+	getDefaultIdType: () ->
 		return String
-	
+
 	getTypes: () ->
 		return ['db', 'nosql', 'couchdb']
 
@@ -101,11 +101,11 @@ class CouchConnector
 			helpers.undoPrep data
 			# Update the data object with the revision returned by CouchDb.
 			data._rev = rsp.rev
-			return callback and callback null, rsp.id, rsp.rev 
+			return callback and callback null, rsp.id, rsp.rev
 
 	updateOrCreate: (model, data, callback) ->
 		debug 'CouchDB updateOrCreate'
-		delete data._deleted		# Prevents accidental deletion 
+		delete data._deleted		# Prevents accidental deletion
 		return @save model, data, (err, id, rev) ->
 			return callback and callback err if err
 			data.id = id
@@ -114,7 +114,7 @@ class CouchConnector
 
 	update: (model, where, data, callback) ->
 		debug 'CouchDB update'
-		delete data._deleted		# Prevents accidental deletion 
+		delete data._deleted		# Prevents accidental deletion
 		@all model, {where}, (err, docsFromDb) =>
 			return callback and callback err if err
 			helpers.merge(docsFromDb, data)
@@ -124,7 +124,7 @@ class CouchConnector
 			debug docs
 			@_nanoWriter.bulk {docs}, (err, rsp) ->
 				return callback and callback err, rsp
-			
+
 	updateAttributes: (model, id, attributes, callback) ->
 		debug 'CouchDB updateAttributes'
 		delete attributes._deleted	#prevent accidental deletion
@@ -157,8 +157,15 @@ class CouchConnector
 		# Consider first the easy case that a specific id is requested
 		if id = filter?.where?.id
 			debug '...moving to findById from all'
-			return @findById(model, id, callback)
-		
+			# support include filter
+			if filter?.include
+				return @findById model, id, (err, result) =>
+					return callback err if err
+					@_models[model].model.include result, filter.include, (err, _result) =>
+						callback err, _result
+			else
+				return @findById(model, id, callback)
+
 		params =
 			keys: [model]
 			include_docs: yes
@@ -178,10 +185,16 @@ class CouchConnector
 					# Use the design and view for the model and propName
 					designName = helpers.designName model
 					viewName = helpers.viewName propName
-					# CouchDb stores dates as Unix time
-					params.key = if _.isDate value then value.getTime() else value
-					# We don't want to use keys - we now have a key property
-					delete params.keys
+					# support loopback passing inq key arrays
+					if value.inq?
+						params.keys = []
+						for key in value.inq
+							params.keys.push(if _.isDate key then key.getTime() else key)
+					else
+						# CouchDb stores dates as Unix time
+						params.key = if _.isDate value then value.getTime() else value
+						# We don't want to use keys - we now have a key property
+						delete params.keys
 					break
 
 		@_nanoReader.view designName, viewName, params, (err, body) =>
@@ -190,18 +203,24 @@ class CouchConnector
 				row.doc.id = row.doc._id
 				delete row.doc._id
 				row.doc
-			
-			
+
+
 			debug "CouchDB all: docs before where"
 			debug docs
 
 			if where = filter?.where
-				for k, v of where
-					# CouchDb stores dates as Unix time
-					where[k] = v.getTime() if _.isDate v
-				docs = _.where docs, where
+				docs = _.select docs, (doc) =>
+					isMatch = true
+					for k, v of where
+						# CouchDb stores dates as Unix time
+						where[k] = v.getTime() if _.isDate v
+						# support loopback inq queries
+						if where[k].inq
+							isMatch = false if not _.contains where[k].inq, doc[k]
+						else
+							isMatch = false if doc[k] != where[k]
+					return isMatch
 
-			
 			debug "CouchDB all: docs after where"
 			debug docs
 
@@ -220,7 +239,7 @@ class CouchConnector
 						key: helpers.stripOrder key
 
 				docs.sort sorting.bind orders
-			
+
 			if filter?.limit and filter?.where
 				maxDocsNum = filter.limit
 			else
@@ -229,11 +248,16 @@ class CouchConnector
 				startDocsNum = filter.offset
 			else
 				startDocsNum = 0
-			
+
 			docs = docs.slice startDocsNum, maxDocsNum
 			output = (@fromDB model, doc for doc in docs)
-			return callback null, output
-					
+
+			# support include filter
+			if filter?.include
+				@_models[model].model.include(output, filter.include, callback)
+			else
+				return callback(null, output)
+
 
 	forDB: (model, data = {}) ->
 		helpers.savePrep model, data
@@ -259,7 +283,7 @@ class CouchConnector
 		@_nanoReader.head id, (err, _, headers) ->
 			return callback and callback null, 0 if err
 			callback && callback null, 1
-	
+
 	getLatestRevision: (model, id, callback) ->
 		@_nanoReader.head id, (err, _, headers) ->
 			return callback and callback err if err
@@ -284,7 +308,7 @@ class CouchConnector
 	viewFunction: (model, ddoc, viewname, keys, callback) ->
 		ddoc = if ddoc then ddoc else @settings.database or @settings.db
 		view = _.findWhere @_availableViews, {ddoc: ddoc, name: viewname}
-		
+
 		if not view
 			return callback and callback "The requested view is not available in the datasource"
 		params = keys
@@ -296,9 +320,9 @@ class CouchConnector
 		if _.isArray keys
 			params = keys: keys
 
-		
+
 		debug model, ddoc, viewname, params
-		
+
 		@_nanoReader.view ddoc, viewname, params, (err, rsp) =>
 			return callback and callback err if err
 			docs = _.pluck rsp.rows, 'value'
@@ -327,7 +351,7 @@ class CouchConnector
 			verb: 'get'
 		fn.description = "Query a CouchDB view based on design document name, view name and keys."
 		return fn
-	
+
 	buildAuthUrl: (auth) ->
 		if auth and (auth.username or auth.user) and (auth.password or auth.pass)
 			authString = (auth.username || auth.user) + ':' + (auth.password || auth.pass) + '@'
@@ -346,7 +370,7 @@ helpers =
 		settings.database = settings.database or settings.db
 		if (not settings.database)
 			throw new Error("Database name must be specified in dataSource for CouchDB connector")
-    
+
 	merge: (base, update) ->
 		return update unless base
 		if not _.isArray base
@@ -391,7 +415,7 @@ helpers =
 		else if err
 			# Without a callback we can at least log the error
 			console.log err
-  
+
 	updateDesign: (db, designName, design, callback) ->
 		# Add the design document to the database or update it if it already exists.
 		db.get designName, (err, designDoc) =>
@@ -410,5 +434,3 @@ helpers =
 			# Insert the design doc into the database.
 			db.insert designDoc, designName, (err, insertedDoc) =>
 				return helpers.invokeCallbackOrLogError callback, err, insertedDoc
-
-
