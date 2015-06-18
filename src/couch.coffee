@@ -161,8 +161,7 @@ class CouchConnector
 			if filter?.include
 				return @findById model, id, (err, result) =>
 					return callback err if err
-					@_models[model].model.include result, filter.include, (err, _result) =>
-						callback err, _result
+					@_models[model].model.include result, filter.include, callback
 			else
 				return @findById(model, id, callback)
 
