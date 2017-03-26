@@ -31,7 +31,14 @@ class CouchConnector
 		@_nanoWriter = require('nano')(@buildAuthUrl(settings.auth)) if not @_nanoWriter
 		@_nanoAdmin = require('nano')(@buildAuthUrl(settings.auth)) if not @_nanoAdmin
 		
-		helpers.updateDesign @_nanoAdmin, '_design/loopback', design
+		if settings.createDatabase
+			authUrl = if settings.auth?.admin then settings.auth.admin else settings.auth
+			nano = require('nano')(@buildAuthUrl(authUrl, false))
+			helpers.createDatabase nano, @settings.db, (err, data) =>
+				helpers.updateDesign @_nanoAdmin, '_design/loopback', design
+		else
+			helpers.updateDesign @_nanoAdmin, '_design/loopback', design
+		
 		@_models = {}
 		@name = 'couchdb'
 		if settings.views and _.isArray settings.views
@@ -328,12 +335,12 @@ class CouchConnector
 		fn.description = "Query a CouchDB view based on design document name, view name and keys."
 		return fn
 	
-	buildAuthUrl: (auth) ->
+	buildAuthUrl: (auth, withDb = true) ->
 		if auth and (auth.username or auth.user) and (auth.password or auth.pass)
 			authString = (auth.username || auth.user) + ':' + (auth.password || auth.pass) + '@'
 		else
 			authString = ''
-		url = @settings.protocol + '://' + authString + @settings.hostname + ':' + @settings.port + '/' + @settings.database
+		url = @settings.protocol + '://' + authString + @settings.hostname + ':' + @settings.port + '/' + if withDb then @settings.database else ''
 		return url
 
 
@@ -391,6 +398,13 @@ helpers =
 		else if err
 			# Without a callback we can at least log the error
 			console.log err
+
+	createDatabase: (nano, dbName, callback) ->
+		nano.db.create dbName, (err, body) =>
+			if err
+				return helpers.invokeCallbackOrLogError callback, err
+			else
+				return helpers.invokeCallbackOrLogError callback, err
   
 	updateDesign: (db, designName, design, callback) ->
 		# Add the design document to the database or update it if it already exists.
